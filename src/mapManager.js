@@ -1,15 +1,5 @@
 import L from 'leaflet'
 
-// marker rouge pour indiquer la localisation sélectionnée
-const redMarker = new L.Icon({
-	iconUrl: 'images/marker-icon-red.png',
-	shadowUrl: 'images/marker-shadow.png',
-	iconSize: [25, 41],
-	iconAnchor: [12, 41],
-	popupAnchor: [1, -34],
-	shadowSize: [41, 41],
-})
-
 export class MapManager {
 	//-------------------------------------------------------------------------------------
 	// Constructeur
@@ -29,26 +19,12 @@ export class MapManager {
 		this.locations = [] // store locations for calculating bounds*
 		this.onMakerSelectedCallback = onMakerSelectedCallback;
 
-		// création d'un fond de carte openstreet-map et ajout de celui-ci à la carte
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
-			maxZoom: 18,
-			tileSize: 512,
-			zoomOffset: -1,
-		}).addTo(this.map)
 
-		// fermeture des popups quand la souris sort de la carte
-		// car sinon on a un bug si un marqueur est sélectionné et son popup est ouvert
-		// et que l'on fait une nouvelle recherche les marqueurs ne s'affichent pas correctement
-		// et ne s'adpatent plus au zoom
-		this.map.on('mouseout', () => {
-			this.map.closePopup();
-		}).on('click', () => {
-			console.log("close");
+		this.map.on('click', () => {
 			this.changeSelectedMarker(null);
 			if (this.onMakerSelectedCallback) {
 				this.onMakerSelectedCallback(null);
-			};
+			}
 		})
 	}
 
@@ -78,11 +54,6 @@ export class MapManager {
 			// association d'un fenêtre popup au marqueur
 			location.marker.bindPopup(this.locationInfos(location));
 			// Gérer l'événement de fermeture du popup
-			// location.marker.on('popupclose', function () {
-			// 	console.log('Popup fermé pour:', location.name)
-			// 	self.selectedMarker = null;
-			// 	self.onMakerSelectedCallback(null);
-			// });
 			// association d'un gestionnaire de clics pour le marqueur
 			location.marker.on('click', function () {
 				// Remettre l'icône par défaut si nécessaire si il y avait un marqueur déjà sélctionné
@@ -92,18 +63,9 @@ export class MapManager {
 				// }
 
 				self.changeSelectedMarker(this)
-				//		self.vueApp.sélectionnerLieu(location);
 				if (self.onMakerSelectedCallback !== null) { self.onMakerSelectedCallback(location) };
 			});
 
-			// // rend le popup associé au marqueur visible dès que la souris est sur lui
-			// location.marker.on('mouseover', function () {
-			// 	this.openPopup()
-			// })
-			// // rend le popup associé au marker invisible dès que la souris n'est plus au dessus du marqueur
-			// location.marker.on('mouseout', function () {
-			// 	this.closePopup()
-			// });
 			markers.push(location.marker)
 		}
 		// on supprime les marqueurs déjà présents sur la carte
@@ -126,7 +88,6 @@ export class MapManager {
 	 * @param {Marker} marker le nouveau marqueur sélectionné
 	 */
 	changeSelectedMarker(marker) {
-		console.log('changeSelected Marker')
 		if (this.selectedMarker) {
 			// il y avait un marqueur précédemment sélectionné,
 			this.selectedMarker.setIcon(L.Marker.prototype.options.icon) // on associe à ce marqueur l'icone par défaut (bleu)
@@ -134,7 +95,6 @@ export class MapManager {
 		// marker est mémorisé dans l'état de l'objet MapManager 
 		// comme étant le nouveau marqueur sélectionné
 		this.selectedMarker = marker;
-		marker?.setIcon(redMarker) // on associe au nouveau marqueur sélectionné une icone rouge
 		// si un marqueur est sélectionné, centrer la carte dessus et zoomer
 		if (marker) {
 			try {
@@ -162,19 +122,6 @@ export class MapManager {
 			this.map.removeLayer(this.markersLayer)
 			this.selectedMarker = null
 		}
-	}
-
-	/**
-	 * @param {Location} location un objet Location
-	 * @returns un chaîne de caractères donnant les informations sur un lieu donné
-	 */
-	locationInfos(location) {
-		const dateString = location.date.toLocaleDateString('fr-FR', {
-			day: 'numeric',
-			month: 'short',
-			year: 'numeric',
-		})
-		return `${location.name} ${location.country}<br>(${dateString})`
 	}
 
 	/**

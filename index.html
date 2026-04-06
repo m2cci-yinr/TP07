@@ -1,16 +1,265 @@
 <!DOCTYPE html>
-<html lang="">
+<html lang="fr">
 
 <head>
   <meta charset="UTF-8">
   <link rel="icon" href="/favicon.ico">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TP7 AWA</title>
+  <title>TP7 AWA – Événements 2026</title>
+  
+  <!-- fonts: Press Start 2P (pixel titles) + VT323 (terminal body) + Nunito (readable UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+  
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      /* terminal palette */
+      --cream:    #ede8dc;
+      --dim:      #887e6e;
+      --bg:       #111009;
+      --bg2:      #1a1812;
+      --bg3:      #221f17;
+      --border:   #302c22;
+      --accent:   #c8a45a;   /* amber gold  - primary  */
+      --accent2:  #6da898;   /* sage teal   - secondary */
+      --red:      #b85858;   /* soft red    - for errors / selected markers */
+      --panel:    rgba(255,248,220,0.03);
+    }
+    
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--cream);
+      font-family: 'Nunito', sans-serif;
+      overflow-x: hidden;
+    }
+    
+    
+    
+    /* Subtle CRT scanlines - adds a little bit of texture */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 3px
+      );
+      pointer-events: none;
+      z-index: 8000;
+    }
+    
+    /* Neko container - JS positions it */
+    #neko {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      width:  32px;
+      height: 32px;
+    }
+    
+    #app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+    }
+  </style>
 </head>
 
 <body>
+  <div id="neko"></div>
   <div id="app"></div>
+  
+  <!--
+  ═══════════════════════════════════════════════════════════
+  PIXEL NEKO - canvas-based cat cursor, no external assets.
+  
+  Behaviour mirrors oneko.js (adryd325, MIT):
+  • Lerps toward mouse at constant speed
+  • run1 / run2 animation while moving
+  • sit when close, scratch when idle
+  • sleep (with ZZZ) after 6 s of no movement
+  • faces left/right based on travel direction
+  
+  Drawing uses the pixel-art approach from the provided
+  snippet, re-skinned to match the warm amber palette.
+  ═══════════════════════════════════════════════════════════
+  -->
+  <script>
+    (function nekoInit() {
+      const wrap = document.getElementById('neko');
+      
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 32;
+      cv.style.cssText = 'width:32px;height:32px;image-rendering:pixelated;display:block;';
+      wrap.appendChild(cv);
+      
+      const ctx = cv.getContext('2d');
+      
+      // Palette - warm amber cat on dark bg
+      const C = {
+        body:    '#d4a96a',   // golden tabby
+        dark:    '#a07040',   // stripe / shadow
+        outline: '#3a2808',   // dark brown outline
+        eye:     '#1a1230',
+        nose:    '#c06060',
+        ear:     '#d08080',
+        zzz:     '#6da898',   // teal ZZZ (matches --accent2)
+      };
+      
+      // Shorthand: filled rectangle
+      const r = (x, y, w, h, c) => {
+        ctx.fillStyle = c; ctx.fillRect(x, y, w, h);
+      };
+      
+      function draw(pose, facingLeft) {
+        ctx.clearRect(0, 0, 32, 32);
+        ctx.save();
+        if (facingLeft) { ctx.translate(32, 0); ctx.scale(-1, 1); }
+        
+        const withHat = document.body.classList.contains('snow-mode');
+        
+        if (pose === 'sit' || pose === 'scratch') {
+          // body
+          r(10,14,12,12,C.body); r(9,15,14,10,C.body);
+          r(9,14,1,12,C.outline); r(21,14,1,12,C.outline);
+          r(10,26,11,1,C.outline); r(10,13,11,1,C.outline);
+          // tabby stripes on body
+          r(12,16,2,7,C.dark); r(18,16,2,7,C.dark);
+          // head
+          r(10,6,12,10,C.body);
+          r(9,7,1,8,C.outline); r(21,7,1,8,C.outline);
+          r(10,5,11,1,C.outline); r(10,16,11,1,C.outline);
+          // tabby stripes on forehead
+          r(13,6,2,3,C.dark); r(17,6,2,3,C.dark);
+          // ears
+          r(10,3,3,3,C.ear); r(19,3,3,3,C.ear);
+          r(10,2,4,1,C.outline); r(18,2,4,1,C.outline);
+          // face
+          r(12,9,2,2,C.eye); r(18,9,2,2,C.eye);
+          r(15,11,2,1,C.nose); r(13,13,6,1,C.outline);
+          // whiskers
+          r(5,11,4,1,C.outline); r(23,11,4,1,C.outline);
+          r(5,13,3,1,C.outline); r(24,13,3,1,C.outline);
+          // tail
+          r(20,22,3,1,C.body); r(22,23,3,1,C.body);
+          r(23,24,2,1,C.body); r(22,25,3,1,C.body); r(21,26,2,1,C.body);
+          // paws
+          r(11,24,4,3,C.body); r(17,24,4,3,C.body);
+          r(10,27,5,1,C.outline); r(16,27,5,1,C.outline);
+          if (pose === 'scratch') {
+            r(20,8,5,2,C.body); r(20,7,6,1,C.outline); r(25,8,1,2,C.outline);
+          }
+          // winter hat (sit/scratch)
+          if (withHat) {
+            r(9,5,14,2,'#ede8dc')   // brim
+            r(11,1,10,5,'#b85858')  // hat body
+            r(14,0,4,1,'#ede8dc')   // pompom
+          }
+          
+        } else if (pose === 'run1' || pose === 'run2') {
+          r(8,14,14,9,C.body);
+          r(7,14,1,9,C.outline); r(21,14,1,9,C.outline);
+          r(8,13,13,1,C.outline); r(8,23,13,1,C.outline);
+          r(11,15,2,5,C.dark); r(17,15,2,5,C.dark);
+          // head
+          r(10,6,12,9,C.body);
+          r(9,7,1,7,C.outline); r(21,7,1,7,C.outline);
+          r(10,5,11,1,C.outline); r(10,15,11,1,C.outline);
+          r(13,6,2,3,C.dark); r(17,6,2,3,C.dark);
+          r(10,3,3,3,C.ear); r(19,3,3,3,C.ear);
+          r(10,2,4,1,C.outline); r(18,2,4,1,C.outline);
+          r(12,9,2,2,C.eye); r(18,9,2,2,C.eye);
+          r(15,11,2,1,C.nose); r(13,13,6,1,C.outline);
+          r(4,11,5,1,C.outline); r(23,11,5,1,C.outline);
+          if (pose === 'run1') {
+            r(9,21,4,4,C.body); r(8,25,5,1,C.outline);
+            r(17,23,5,3,C.body); r(17,26,5,1,C.outline);
+          } else {
+            r(9,23,5,3,C.body); r(9,26,5,1,C.outline);
+            r(17,21,4,4,C.body); r(16,25,5,1,C.outline);
+          }
+          // tail
+          r(19,14,4,2,C.body); r(22,16,3,2,C.body); r(23,18,2,2,C.body);
+          // winter hat (running — slightly tilted feel, shifted right 1px)
+          if (withHat) {
+            r(10,5,13,2,'#ede8dc')  // brim
+            r(12,1,9,5,'#b85858')   // hat body
+            r(15,0,4,1,'#ede8dc')   // pompom
+          }
+          
+        } else if (pose === 'sleep') {
+          // curled up
+          r(8,16,16,8,C.body);
+          r(7,16,1,8,C.outline); r(23,16,1,8,C.outline);
+          r(8,15,15,1,C.outline); r(8,24,15,1,C.outline);
+          r(9,11,12,6,C.body);
+          r(8,12,1,4,C.outline); r(20,12,1,4,C.outline);
+          r(9,10,11,1,C.outline);
+          r(11,13,4,1,C.outline); r(17,13,4,1,C.outline);
+          // Z Z Z
+          r(22,7,3,1,C.zzz); r(24,8,1,1,C.zzz); r(22,9,3,1,C.zzz);
+          r(25,4,2,1,C.zzz); r(26,5,1,1,C.zzz); r(25,6,2,1,C.zzz);
+          // winter hat (sleep — on the curled head, shifted left since cat faces left)
+          if (withHat) {
+            r(8,10,13,2,'#ede8dc')  // brim
+            r(10,6,9,5,'#b85858')   // hat body
+            r(13,5,4,1,'#ede8dc')   // pompom
+          }
+        }
+        
+        ctx.restore();
+      }
+      
+      //cat behaviour - mirrors oneko.js
+      let tx = 200, ty = 200;   // mouse target
+      let nx = 200, ny = 200;   // neko position
+      let tick = 0;
+      let asleep = false, sleepTimer = null;
+      const SPEED = 4; // px per frame
+      
+      document.addEventListener('mousemove', e => {
+        tx = e.clientX; ty = e.clientY;
+        asleep = false;
+        clearTimeout(sleepTimer);
+        sleepTimer = setTimeout(() => { asleep = true; }, 6000);
+      });
+      
+      function loop() {
+        tick++;
+        const dx = tx - nx, dy = ty - ny;
+        const dist = Math.hypot(dx, dy);
+        const goLeft = dx < 0;
+        
+        if (asleep) {
+          draw(tick % 80 < 40 ? 'sleep' : 'sit', false);
+        } else if (dist > 48) {
+          nx += (dx / dist) * SPEED;
+          ny += (dy / dist) * SPEED;
+          draw(tick % 8 < 4 ? 'run1' : 'run2', goLeft);
+        } else if (dist > 4) {
+          draw('sit', goLeft);
+        } else {
+          draw(tick % 130 < 40 ? 'scratch' : 'sit', goLeft);
+        }
+        
+        wrap.style.left = (nx - 16) + 'px';
+        wrap.style.top  = (ny - 16) + 'px';
+        requestAnimationFrame(loop);
+      }
+      
+      wrap.style.left = (nx - 16) + 'px';
+      wrap.style.top  = (ny - 16) + 'px';
+      loop();
+    })();
+  </script>
+  
   <script type="module" src="/src/main.js"></script>
 </body>
-
 </html>
